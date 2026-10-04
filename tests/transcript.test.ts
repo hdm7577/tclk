@@ -189,6 +189,30 @@ describe("trusted transcript records", () => {
     expect(folded.steps.map((step) => step.ok)).toEqual([true, true, true, true]);
   });
 
+  it("rejects a refund one millisecond before refundAfterMs", () => {
+    const { offer, accept } = deal();
+    const refund = {
+      type: "refund" as const,
+      from: payer.did,
+      contract: accept.contract,
+    };
+
+    const folded = foldTranscript([
+      record(BOARD, 1, NOW - 1, payer, encodeFrame(offer)),
+      record(BOARD, 2, NOW, payee, encodeFrame(accept)),
+      record(
+        dealRoom(accept.contract),
+        1,
+        offer.refundAfterMs - 1,
+        payer,
+        encodeFrame(refund),
+      ),
+    ]);
+
+    expect(folded.state?.status).toBe("accepted");
+    expect(folded.steps[2].ok).toBe(false);
+  });
+
   it("parses exports strictly and preserves the signed bytes", () => {
     const { offer } = deal();
     const line = encodeFrame(offer);
